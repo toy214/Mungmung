@@ -1,36 +1,46 @@
 {
   "expo": {
     "name": "MungMung",
-    "slug": "MungMung",
+    "slug": "mungmung",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "sdkVersion": "51.0.0", 
+    "platforms": ["ios", "android"],
+    "permissions": [
+      "microphone", 
+      "audio_recording", 
+      "speech_recognition" 
+    ],
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "speechRecognitionPermission": {
+            "ios": {
+              "message": "This app uses speech recognition to understand what you say."
+            },
+            "android": {
+              "message": "This app requires permission to access the microphone for speech recognition."
+            }
+          }
+        }
+      ]
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.yourcompany.mungmung" 
     },
     "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router"
-    ],
-    "experiments": {
-      "typedRoutes": true
+      "favicon": "./assets/favicon.png"
     }
   }
 }
+

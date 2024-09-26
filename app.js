@@ -1,184 +1,108 @@
-import React, { useState, useCallback } from 'react';
-import { Text, View, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Button, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Voice from 'react-native-voice';
 import * as Speech from 'expo-speech';
-import { Ionicons } from '@expo/vector-icons';
-import { ProgressBar } from 'react-native-paper';
-
-const lessonPlans = [
-  {
-    category: 'Greetings',
-    lessons: [
-      {
-        lesson: 'Basic Greetings',
-        words: [
-          { word: '안녕하세요.', meaning: 'Hello' },
-          { word: '잘 지내세요?', meaning: 'How are you?' },
-          { word: '안녕히 가세요.', meaning: 'Goodbye (when someone is leaving)' },
-          { word: '안녕히 계세요.', meaning: 'Goodbye (when you are leaving)' },
-          { word: '여보세요.', meaning: 'Hello (on the phone)' },
-        ],
-      },
-      {
-        lesson: 'Farewells',
-        words: [
-          { word: '안녕히 가세요.', meaning: 'Goodbye (when someone is leaving)' },
-          { word: '안녕히 계세요.', meaning: 'Goodbye (when you are leaving)' },
-          { word: '다음에 봐요.', meaning: 'See you next time' },
-          { word: '조심히 가세요.', meaning: 'Take care' },
-        ],
-      },
-    ],
-  },
-  {
-    category: 'Numbers',
-    lessons: [
-      {
-        lesson: 'Basic Numbers',
-        words: [
-          { word: '일.', meaning: 'One' },
-          { word: '이.', meaning: 'Two' },
-          { word: '삼.', meaning: 'Three' },
-          { word: '사.', meaning: 'Four' },
-          { word: '오.', meaning: 'Five' },
-          { word: '육.', meaning: 'Six' },
-          { word: '칠.', meaning: 'Seven' },
-          { word: '팔.', meaning: 'Eight' },
-          { word: '구.', meaning: 'Nine' },
-          { word: '십.', meaning: 'Ten' },
-        ],
-      },
-    ],
-  },
-];
+import * as Permissions from 'expo-permissions'; // Import Permissions
+import data from './data'; // Import the data file
 
 export default function App() {
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-  const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [completedWords, setCompletedWords] = useState(0);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isFrontPage, setIsFrontPage] = useState(true);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [recognizedText, setRecognizedText] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
-  const currentCategory = lessonPlans[currentCategoryIndex];
+  const currentCategory = data.categories[currentCategoryIndex];
   const currentLesson = currentCategory.lessons[currentLessonIndex];
   const currentWord = currentLesson.words[currentWordIndex];
 
-  const handleSpeakWord = useCallback(() => {
-    Speech.speak(currentWord.word, { language: 'ko' });
-  }, [currentWord.word]);
+  useEffect(() => {
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
 
-  const handleNextWord = useCallback(() => {
-    if (currentWordIndex < currentLesson.words.length - 1) {
-      setCurrentWordIndex((prevIndex) => prevIndex + 1);
-      setCompletedWords((prevCount) => prevCount + 1);
-    } else {
-      if (currentLessonIndex < currentCategory.lessons.length - 1) {
-        setCurrentLessonIndex((prevIndex) => prevIndex + 1);
-        setCurrentWordIndex(0);
-        setCompletedWords(0);
-      } else if (currentCategoryIndex < lessonPlans.length - 1) {
-        alert('Category Complete! Moving to the next category.');
-        setCurrentCategoryIndex((prevIndex) => prevIndex + 1);
-        setCurrentLessonIndex(0);
-        setCurrentWordIndex(0);
-        setCompletedWords(0);
-      } else {
-        alert('Congratulations! You have completed all lessons.');
-      }
+    // Request permissions for speech recognition
+    requestSpeechRecognitionPermission();
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const requestSpeechRecognitionPermission = async () => {
+    const { status } = await Permissions.askAsync(Permissions.AUDIO_RECORDING, Permissions.SPEECH_RECOGNITION);
+    if (status !== 'granted') {
+      alert('Sorry, we need speech recognition permissions to make this work!');
     }
-  }, [currentWordIndex, currentLessonIndex, currentCategoryIndex]);
-
-  const handleExitToMainMenu = () => {
-    setIsFrontPage(true);
-    setCurrentCategoryIndex(0);
-    setCurrentLessonIndex(0);
-    setCurrentWordIndex(0);
-    setCompletedWords(0);
   };
 
-  const toggleModal = () => {
-    setIsModalVisible(!isModalVisible);
+  const onSpeechResults = (e) => {
+    setRecognizedText(e.value[0]);
+    setIsListening(false);
+  };
+
+  const onSpeechError = (e) => {
+    console.error('Speech recognition error:', e.error);
+    setIsListening(false);
+  };
+
+  const startListening = async () => {
+    try {
+      setIsListening(true);
+      await Voice.start('ko-KR'); // Start listening in Korean
+    } catch (e) {
+      console.error('Error starting speech recognition:', e);
+    }
+  };
+
+  const stopListening = async () => {
+    try {
+      await Voice.stop();
+      setIsListening(false);
+    } catch (e) {
+      console.error('Error stopping speech recognition:', e);
+    }
+  };
+
+  const handleSpeakWord = (word) => {
+    Speech.speak(word.word, { language: 'ko' });
+  };
+
+  const handleNextWord = () => {
+    if (currentWordIndex < currentLesson.words.length - 1) {
+      setCurrentWordIndex(currentWordIndex + 1);
+      setRecognizedText('');
+    } else if (currentLessonIndex < currentCategory.lessons.length - 1) {
+      setCurrentLessonIndex(currentLessonIndex + 1);
+      setCurrentWordIndex(0);
+      setRecognizedText('');
+    } else if (currentCategoryIndex < data.categories.length - 1) {
+      setCurrentCategoryIndex(currentCategoryIndex + 1);
+      setCurrentLessonIndex(0);
+      setCurrentWordIndex(0);
+      setRecognizedText('');
+    } else {
+      alert("You've reached the end of the lessons!");
+    }
   };
 
   return (
     <View style={styles.container}>
-      {isFrontPage ? (
-        <View style={styles.welcomePage}>
-          <Text style={styles.welcomeTitle}>Welcome to the Korean Learning App!</Text>
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => setIsFrontPage(false)}>
-            <Text style={styles.startButtonText}>Start Learning</Text>
-          </TouchableOpacity>
-        </View>
-      ) : isMenuOpen ? (
-        <View style={styles.menu}>
-          {lessonPlans.map((category, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuButton}
-              onPress={() => {
-                setCurrentCategoryIndex(index);
-                setIsMenuOpen(false);
-              }}>
-              <Text style={styles.menuButtonText}>{category.category}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity onPress={toggleModal} style={styles.exitButton}>
-            <Text style={styles.exitButtonText}>Select a Lesson</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleExitToMainMenu} style={styles.exitButton}>
-            <Text style={styles.exitButtonText}>Exit to Main Menu</Text>
-          </TouchableOpacity>
+      <Text style={styles.title}>{currentCategory.name}</Text>
+      <Text style={styles.lessonName}>{currentLesson.name}</Text>
+      <Text style={styles.word}>{currentWord.word}</Text>
+      <Text style={styles.pronunciation}>{currentWord.pronunciation}</Text>
+      {currentWord.example && <Text style={styles.example}>{currentWord.example}</Text>}
+      <TouchableOpacity onPress={() => handleSpeakWord(currentWord)}>
+        <Text style={styles.button}>Speak "{currentWord.word}"</Text>
+      </TouchableOpacity>
 
-          <Modal visible={isModalVisible} animationType="slide">
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Select a Lesson</Text>
-              <FlatList
-                data={currentCategory.lessons}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => {
-                      setCurrentLessonIndex(index);
-                      toggleModal();
-                    }}>
-                    <Text style={styles.modalButtonText}>{item.lesson}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-              <TouchableOpacity onPress={toggleModal} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
-        </View>
-      ) : (
-        <View style={styles.wordCard}>
-          <Text style={styles.wordText}>{currentWord.word}</Text>
-          <Text style={styles.meaningText}>{currentWord.meaning}</Text>
-          <ProgressBar
-            progress={(completedWords + 1) / currentLesson.words.length}
-            color="#03a9f4"
-            style={styles.progressBar}
-          />
-          <TouchableOpacity onPress={handleSpeakWord} style={styles.pronounceButton}>
-            <Text style={styles.pronounceButtonText}>Pronounce</Text>
-          </TouchableOpacity>
-          <Text style={styles.progressText}>
-            Word {completedWords + 1} of {currentLesson.words.length}
-          </Text>
-          <TouchableOpacity onPress={handleNextWord} style={styles.nextButton}>
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleExitToMainMenu} style={styles.exitButton}>
-            <Text style={styles.exitButtonText}>Exit to Main Menu</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <Button
+        title={isListening ? "Stop Listening" : "Start Listening"}
+        onPress={isListening ? stopListening : startListening}
+      />
+
+      <Text style={styles.text}>Recognized Text: {recognizedText}</Text>
+      <Button title="Next Word" onPress={handleNextWord} />
     </View>
   );
 }
@@ -188,135 +112,42 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5FCFF',
     padding: 20,
   },
-  welcomePage: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  welcomeTitle: {
+  title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 20,
   },
-  startButton: {
-    backgroundColor: '#03a9f4',
-    padding: 15,
-    borderRadius: 10,
+  lessonName: {
+    fontSize: 20,
+    marginBottom: 10,
   },
-  startButtonText: {
-    fontSize: 18,
-    color: '#fff',
-  },
-  menu: {
-    width: '100%',
-  },
-  menuButton: {
-    padding: 15,
-    backgroundColor: '#03a9f4',
-    marginVertical: 5,
-    borderRadius: 10,
-  },
-  menuButtonText: {
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
-  },
-  wordCard: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  wordText: {
-    fontSize: 36,
+  word: {
+    fontSize: 40,
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  meaningText: {
-    fontSize: 18,
-    color: '#666',
+  pronunciation: {
+    fontSize: 20,
+    color: '#555',
     marginBottom: 20,
   },
-  pronounceButton: {
-    backgroundColor: '#03a9f4',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  pronounceButtonText: {
-    fontSize: 18,
-    color: '#fff',
-  },
-  progressBar: {
-    width: '100%',
-    marginVertical: 10,
-  },
-  progressText: {
-    marginVertical: 10,
+  example: {
     fontSize: 16,
-    color: '#666',
+    color: '#888',
+    marginBottom: 20,
   },
-  nextButton: {
-    backgroundColor: '#03a9f4',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-  },
-  nextButtonText: {
-    fontSize: 18,
-    color: '#fff',
-  },
-  exitButton: {
-    backgroundColor: '#f44336',
+  button: {
+    backgroundColor: '#007BFF',
     padding: 10,
-    borderRadius: 10,
-    marginTop: 15,
-  },
-  exitButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 22,
+    color: 'white',
     marginBottom: 20,
-  },
-  modalButton: {
-    padding: 15,
-    backgroundColor: '#03a9f4',
-    marginVertical: 5,
-    borderRadius: 10,
-    width: '80%',
-  },
-  modalButtonText: {
-    fontSize: 18,
-    color: '#fff',
     textAlign: 'center',
+    borderRadius: 5,
   },
-  closeButton: {
-    backgroundColor: '#f44336',
-    padding: 10,
-    borderRadius: 10,
+  text: {
+    fontSize: 18,
     marginTop: 20,
-    width: '50%',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
   },
 });
