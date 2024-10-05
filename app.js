@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Button, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Voice from 'react-native-voice';
 import * as Speech from 'expo-speech';
-import * as Permissions from 'expo-permissions'; // Import Permissions
-import data from './data'; // Import the data file
+import * as MediaLibrary from 'expo-media-library'; // Removed expo-permissions, now using expo-media-library
+import data from './data';
 
 export default function App() {
   const [recognizedText, setRecognizedText] = useState('');
@@ -20,7 +20,6 @@ export default function App() {
     Voice.onSpeechResults = onSpeechResults;
     Voice.onSpeechError = onSpeechError;
 
-    // Request permissions for speech recognition
     requestSpeechRecognitionPermission();
 
     return () => {
@@ -29,9 +28,16 @@ export default function App() {
   }, []);
 
   const requestSpeechRecognitionPermission = async () => {
-    const { status } = await Permissions.askAsync(Permissions.AUDIO_RECORDING, Permissions.SPEECH_RECOGNITION);
-    if (status !== 'granted') {
-      alert('Sorry, we need speech recognition permissions to make this work!');
+    try {
+      // Request microphone permission directly with MediaLibrary
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sorry, we need microphone permissions to make this work!');
+        return;
+      }
+      console.log('Microphone permission granted.');
+    } catch (error) {
+      console.error('Permission error:', error);
     }
   };
 

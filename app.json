@@ -3,12 +3,10 @@
     "name": "MungMung",
     "slug": "mungmung",
     "version": "1.0.0",
-    "sdkVersion": "51.0.0", 
+    "sdkVersion": "51.0.0",
     "platforms": ["ios", "android"],
     "permissions": [
-      "microphone", 
-      "audio_recording", 
-      "speech_recognition" 
+      "microphone"
     ],
     "plugins": [
       [
@@ -36,11 +34,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.yourcompany.mungmung" 
+      "package": "com.yourcompany.mungmung"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     }
   }
 }
-
